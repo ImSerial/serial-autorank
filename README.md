@@ -1,3 +1,5 @@
+🤖 Petit projet inspiré d’un bot Discord aperçu sur un serveur de team, entièrement remade et revisité avec ma propre implémentation et plusieurs améliorations.
+
 # CONFIGURATION ENV :
 
 ```
