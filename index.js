@@ -1,6 +1,3 @@
-// -------------------------------------------------------------
-// IMPORTS
-// -------------------------------------------------------------
 import {
     Client,
     GatewayIntentBits,
@@ -19,18 +16,12 @@ import sqlite3 from "sqlite3";
 
 dotenv.config();
 
-// -------------------------------------------------------------
-// CONFIG
-// -------------------------------------------------------------
 const TOKEN = process.env.TOKEN;
 const OWNERS = process.env.OWNERS?.split(",") || [];
 const GUILD_ID = process.env.GUILD_ID;
 const TWITCH_URL = process.env.TWITCH_URL || "https://www.twitch.tv";
 const PASTEBIN_API_KEY = process.env.PASTEBIN_API_KEY;
 
-// -------------------------------------------------------------
-// SQLITE
-// -------------------------------------------------------------
 const db = new sqlite3.Database("./bot.db");
 
 db.serialize(() => {
@@ -57,9 +48,6 @@ function setSetting(key, value) {
     );
 }
 
-// -------------------------------------------------------------
-// HELPERS
-// -------------------------------------------------------------
 const resolveName = (m) =>
     m.displayName ||
     m.nickname ||
@@ -74,7 +62,6 @@ function isOwner(id) {
     return OWNERS.includes(id);
 }
 
-// LOG attribution
 async function sendLogRoleGiven(guild, member, role, element) {
     const chanId = await getSetting("logsChannelId");
     if (!chanId) return;
@@ -96,7 +83,6 @@ async function sendLogRoleGiven(guild, member, role, element) {
     channel.send({ embeds: [embed] }).catch(() => {});
 }
 
-// LOG retrait
 async function sendLogRoleRemoved(guild, member, role, element, oldName, newName) {
     const chanId = await getSetting("logsChannelId");
     if (!chanId) return;
@@ -120,9 +106,6 @@ async function sendLogRoleRemoved(guild, member, role, element, oldName, newName
     channel.send({ embeds: [embed] }).catch(() => {});
 }
 
-// -------------------------------------------------------------
-// DISCORD CLIENT
-// -------------------------------------------------------------
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -133,9 +116,6 @@ const client = new Client({
     partials: [Partials.Channel, Partials.GuildMember, Partials.User]
 });
 
-// -------------------------------------------------------------
-// SLASH COMMANDS
-// -------------------------------------------------------------
 const commands = [
 
     // /setrole
@@ -149,7 +129,6 @@ const commands = [
             o.setName("element").setDescription("Emoji ou mot à détecter").setRequired(true)
         ),
 
-    // /setlogs
     new SlashCommandBuilder()
         .setName("setlogs")
         .setDescription("Définir le salon des logs.")
@@ -159,8 +138,6 @@ const commands = [
                 .addChannelTypes(ChannelType.GuildText)
                 .setRequired(true)
         ),
-
-    // /bot-name
     new SlashCommandBuilder()
         .setName("bot-name")
         .setDescription("Changer le pseudo du bot.")
@@ -168,7 +145,6 @@ const commands = [
             o.setName("name").setDescription("Nouveau pseudo").setRequired(true)
         ),
 
-    // /bot-avatar
     new SlashCommandBuilder()
         .setName("bot-avatar")
         .setDescription("Changer l’avatar du bot.")
@@ -176,7 +152,6 @@ const commands = [
             o.setName("image").setDescription("Nouvel avatar").setRequired(true)
         ),
 
-    // /bot-status
     new SlashCommandBuilder()
         .setName("bot-status")
         .setDescription("Changer le status du bot.")
@@ -192,7 +167,6 @@ const commands = [
                 )
         ),
 
-    // /bot-activities
     new SlashCommandBuilder()
         .setName("bot-activities")
         .setDescription("Changer l’activité du bot.")
@@ -213,7 +187,6 @@ const commands = [
                 .setRequired(true)
         ),
 
-    // /analyse
     new SlashCommandBuilder()
         .setName("analyse")
         .setDescription("Analyse les rôles dangereux (Pastebin PUBLIC).")
@@ -221,9 +194,6 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-// -------------------------------------------------------------
-// READY
-// -------------------------------------------------------------
 client.on("ready", async () => {
     console.log(`${client.user.tag} connecté`);
     if (GUILD_ID)
@@ -233,9 +203,6 @@ client.on("ready", async () => {
         );
 });
 
-// -------------------------------------------------------------
-// DONNER LE RÔLE LORS DU PING
-// -------------------------------------------------------------
 client.on("messageCreate", async msg => {
     if (msg.author.bot) return;
     if (!msg.mentions.has(client.user.id)) return;
@@ -273,9 +240,6 @@ client.on("messageCreate", async msg => {
     sendLogRoleGiven(msg.guild, member, role, element);
 });
 
-// -------------------------------------------------------------
-// RETRAIT AUTOMATIQUE DU ROLE
-// -------------------------------------------------------------
 async function processNameChange(oldName, newName, member) {
     const element = await getSetting("element");
     const roleId = await getSetting("roleId");
@@ -287,16 +251,13 @@ async function processNameChange(oldName, newName, member) {
     const oldHad = oldName.includes(element);
     const newHas = newName.includes(element);
 
-    // Retrait automatique
     if (oldHad && !newHas && member.roles.cache.has(role.id)) {
         try { await member.roles.remove(role); } catch {}
 
-        // LOG du retrait
         sendLogRoleRemoved(member.guild, member, role, element, oldName, newName);
     }
 }
 
-// Pseudo serveur (nickname / displayName local)
 client.on("guildMemberUpdate", async (oldMem, newMem) => {
     const oldName = resolveName(oldMem);
     const newName = resolveName(newMem);
@@ -304,7 +265,6 @@ client.on("guildMemberUpdate", async (oldMem, newMem) => {
         await processNameChange(oldName, newName, newMem);
 });
 
-// Pseudo GLOBAL (userUpdate)
 client.on("userUpdate", async (oldUser, newUser) => {
     for (const guild of client.guilds.cache.values()) {
         const member = guild.members.cache.get(newUser.id);
@@ -318,9 +278,6 @@ client.on("userUpdate", async (oldUser, newUser) => {
     }
 });
 
-// -------------------------------------------------------------
-// SLASH COMMANDS HANDLER
-// -------------------------------------------------------------
 client.on("interactionCreate", async i => {
     if (!i.isChatInputCommand()) return;
 
@@ -351,8 +308,6 @@ client.on("interactionCreate", async i => {
             ephemeral: true
         });
     }
-
-    // /setlogs
     if (cmd === "setlogs") {
         const channel = i.options.getChannel("salon");
         setSetting("logsChannelId", channel.id);
@@ -371,7 +326,6 @@ client.on("interactionCreate", async i => {
         });
     }
 
-    // /bot-name
     if (cmd === "bot-name") {
         const name = i.options.getString("name");
 
@@ -385,7 +339,6 @@ client.on("interactionCreate", async i => {
         });
     }
 
-    // /bot-avatar
     if (cmd === "bot-avatar") {
         const img = i.options.getAttachment("image");
 
@@ -402,7 +355,6 @@ client.on("interactionCreate", async i => {
         });
     }
 
-    // /bot-status
     if (cmd === "bot-status") {
         const type = i.options.getString("type");
 
@@ -416,7 +368,6 @@ client.on("interactionCreate", async i => {
         });
     }
 
-    // /bot-activities
     if (cmd === "bot-activities") {
         const type = i.options.getString("type");
         const desc = i.options.getString("description");
@@ -446,7 +397,6 @@ client.on("interactionCreate", async i => {
         });
     }
 
-    // /analyse
     if (cmd === "analyse") {
         if (!PASTEBIN_API_KEY)
             return i.reply({ content: "PASTEBIN_API_KEY manquant.", ephemeral: true });
@@ -503,7 +453,4 @@ client.on("interactionCreate", async i => {
     }
 });
 
-// -------------------------------------------------------------
-// LOGIN
-// -------------------------------------------------------------
 client.login(TOKEN);
